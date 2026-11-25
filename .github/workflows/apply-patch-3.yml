@@ -1,0 +1,34 @@
+name: Apply website patch 3
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-patch-3.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download patch zip
+        run: curl -fL -o patch3.zip https://github.com/seooptimizeragency/balloonslanee/releases/download/patch-3/balloonslanee-patch3.zip
+      - name: Verify checksum
+        run: echo "8e756df1011d1e45ac308cf93f5ad286c79a06373707b932db9923a6628b3d39  patch3.zip" | sha256sum -c -
+      - name: Unpack patch
+        run: |
+          mkdir patch
+          unzip -q patch3.zip -d patch
+          test -f patch/index.html
+          test -f patch/1st-birthday-party/index.html
+          echo "Patch files: $(find patch -type f | wc -l)"
+      - name: Apply patch and commit
+        run: |
+          cp -r patch/. .
+          rm -rf .github patch patch3.zip
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Speed round 3: non-blocking fonts, homepage font preloads removed"
+          git push
