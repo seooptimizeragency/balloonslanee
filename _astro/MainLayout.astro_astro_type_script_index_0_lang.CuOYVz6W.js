@@ -8,17 +8,30 @@ document.querySelectorAll('form[action*="formsubmit.co/"]').forEach(function(for
   function show(msg,ok){status.textContent=msg;status.style.display='block';status.style.color=ok?'#14532d':'#7f1d1d';status.style.background=ok?'#dcfce7':'#fee2e2';status.style.border='1px solid '+(ok?'#86efac':'#fca5a5');}
   function hide(){status.style.display='none';status.textContent='';}
   function ensure(name,value){var el=form.querySelector('input[name="'+name+'"]');if(!el){el=document.createElement('input');el.type='hidden';el.name=name;form.appendChild(el);}el.value=value;}
+  var human=form.querySelector('input[type="checkbox"][name="human_verified"]');
+  if(human){human.required=false;}
   var sending=false;
+  function setBtn(sendingNow,oldText){if(!btn)return;btn.disabled=sendingNow;var t=sendingNow?'Sending...':oldText;if(btn.tagName==='INPUT'){btn.value=t;}else{btn.textContent=t;}}
   form.addEventListener('submit',function(ev){
     ev.preventDefault();
     if(sending)return;
-    var human=form.querySelector('input[type="checkbox"][name="human_verified"]');
     if(human&&!human.checked){show('Please verify you are human before sending.',false);human.focus();return;}
     if(form.checkValidity&&!form.checkValidity()){form.reportValidity&&form.reportValidity();show('Please fill in the required fields correctly and try again.',false);return;}
     sending=true;hide();
     var oldText=btn?(btn.tagName==='INPUT'?btn.value:btn.textContent):'';
-    if(btn){btn.disabled=true;if(btn.tagName==='INPUT'){btn.value='Sending...';}else{btn.textContent='Sending...';}}
+    setBtn(true,oldText);
     ensure('_captcha','false');
+    function finish(ok){sending=false;setBtn(false,oldText);if(ok){show('Thank you! Your inquiry has been submitted successfully. We will contact you soon.',true);form.reset();}else{show('Sorry, your message could not be sent. Please try again.',false);}}
+    var fileInput=form.querySelector('input[type="file"]');
+    var hasFile=fileInput&&fileInput.files&&fileInput.files.length>0;
+    if(!hasFile&&window.fetch){
+      var ajaxUrl=form.action.replace('formsubmit.co/','formsubmit.co/ajax/');
+      fetch(ajaxUrl,{method:'POST',headers:{'Accept':'application/json'},body:new FormData(form)})
+        .then(function(r){return r.json().catch(function(){return null;});})
+        .then(function(data){finish(!!(data&&(data.success===true||data.success==='true')));})
+        .catch(function(){finish(false);});
+      return;
+    }
     ensure('_next',window.location.origin+'/form-sent/');
     var frameName='fs-frame-'+Math.random().toString(36).slice(2,9);
     var frame=document.createElement('iframe');
@@ -26,19 +39,13 @@ document.querySelectorAll('form[action*="formsubmit.co/"]').forEach(function(for
     document.body.appendChild(frame);
     form.target=frameName;
     var done=false;
-    function finish(ok){
-      if(done)return;done=true;sending=false;
-      if(btn){btn.disabled=false;if(btn.tagName==='INPUT'){btn.value=oldText;}else{btn.textContent=oldText;}}
-      if(ok){show('Thank you! Your inquiry has been submitted successfully. We will contact you soon.',true);form.reset();}
-      else{show('Sorry, your message could not be sent. Please try again.',false);}
-      setTimeout(function(){frame.remove();},500);
-    }
+    function finishFrame(ok){if(done)return;done=true;finish(ok);setTimeout(function(){frame.remove();},500);}
     var started=Date.now();
     var poll=setInterval(function(){
       var path='';
       try{path=frame.contentWindow.location.pathname;}catch(e){path='';}
-      if(path==='/form-sent/'){clearInterval(poll);finish(true);}
-      else if(Date.now()-started>25000){clearInterval(poll);finish(false);}
+      if(path.indexOf('/form-sent')===0){clearInterval(poll);finishFrame(true);}
+      else if(Date.now()-started>30000){clearInterval(poll);finishFrame(false);}
     },300);
     form.submit();
   });
