@@ -1,0 +1,34 @@
+name: Apply website patch 4
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-patch-4.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download patch zip
+        run: curl -fL -o patch4.zip https://github.com/seooptimizeragency/balloonslanee/releases/download/patch-4/balloonslanee-patch4.zip
+      - name: Verify checksum
+        run: echo "cc17658fd9011f00909da9b33c2dcc8e4dda0311293b73bdeed5fe876d682a5c  patch4.zip" | sha256sum -c -
+      - name: Unpack patch
+        run: |
+          mkdir patch
+          unzip -q patch4.zip -d patch
+          test -f patch/_astro/ClientsCarousel.astro_astro_type_script_index_0_lang.DYCaO3ty.js
+          grep -q 'IntersectionObserver' patch/_astro/ClientsCarousel.astro_astro_type_script_index_0_lang.DYCaO3ty.js
+          echo "Patch files: $(find patch -type f | wc -l)"
+      - name: Apply patch and commit
+        run: |
+          cp -r patch/. .
+          rm -rf .github patch patch4.zip
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Speed round 4: homepage carousels start when visible"
+          git push
