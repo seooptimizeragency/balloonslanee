@@ -1,0 +1,51 @@
+name: Seed website package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seed-website.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_SHA256: "fae8b1d52b7a284b04d1bb20eebd7f8659274a10fdbe24c1e790f38a203381bf"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/parts
+          gh release download package-seed --repo "$GITHUB_REPOSITORY" --pattern 'package.zip.part-*' --dir /tmp/parts
+          ls -l /tmp/parts
+          test "$(find /tmp/parts -type f | wc -l)" -eq 15
+          cat /tmp/parts/package.zip.part-* > /tmp/package.zip
+          echo "$PACKAGE_SHA256  /tmp/package.zip" | sha256sum -c -
+          mkdir -p /tmp/pkg
+          unzip -q /tmp/package.zip -d /tmp/pkg
+          test -f /tmp/pkg/index.html
+          files=$(find /tmp/pkg -type f | wc -l)
+          pages=$(find /tmp/pkg -name index.html | wc -l)
+          echo "files=$files pages=$pages"
+          test "$files" -eq 3179
+          test "$pages" -eq 65
+          if grep -R -q -E 'seooptimizeragency\.github\.io|/BalloonsLane/' /tmp/pkg --include='*.html' --include='*.css' --include='*.js'; then
+            echo "GitHub prefix leftovers found"
+            exit 1
+          fi
+
+      - name: Replace repository contents with package
+        run: |
+          rsync -a --delete --exclude '.git/' /tmp/pkg/ ./
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add Balloons Lane 65-page website package"
+          git push origin HEAD:main
