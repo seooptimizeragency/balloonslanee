@@ -1,0 +1,28 @@
+name: Apply patch 6
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-patch-6.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify patch
+        run: |
+          curl -L -o /tmp/patch6.zip https://github.com/seooptimizeragency/balloonslanee/releases/download/patch-6/balloonslanee-patch6.zip
+          echo "8f7a092cae6e1b62792aa1883cecfe1f2d1e5de00a6a98876bc3451d3a3a777c  /tmp/patch6.zip" | sha256sum -c -
+          mkdir -p /tmp/patch6
+          unzip -q /tmp/patch6.zip -d /tmp/patch6
+      - name: Apply patch
+        run: |
+          cp -a /tmp/patch6/. .
+          rm -rf .github
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Form send fix: AJAX route and human-check message"
+          git push
