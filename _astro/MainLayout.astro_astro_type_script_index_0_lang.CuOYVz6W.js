@@ -20,7 +20,7 @@ document.querySelectorAll('form[action*="formsubmit.co/"]').forEach(function(for
     sending=true;hide();
     var oldText=btn?(btn.tagName==='INPUT'?btn.value:btn.textContent):'';
     setBtn(true,oldText);
-    ensure('_next',window.location.origin+'/form-sent/');
+    ensure('_next',window.location.origin+'/form-sent/');ensure('_captcha','false');
     var frameName='fs-frame-'+Math.random().toString(36).slice(2,9);
     var frame=document.createElement('iframe');
     frame.name=frameName;frame.style.display='none';frame.setAttribute('aria-hidden','true');frame.tabIndex=-1;
